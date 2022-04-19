@@ -20,10 +20,13 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { WaveSurfer, WaveForm, Region, Marker } from "wavesurfer-react";
 import RegionsPlugin from "wavesurfer.js/dist/plugin/wavesurfer.regions.min";
 
+import FileUpload from "react-material-file-upload";
+
 const theme = createTheme();
 
 function App() {
   const [regions, setRegions] = useState([]);
+  const [files, setFiles] = useState([]);
 
   const plugins = useMemo(() => {
     return [
@@ -87,6 +90,22 @@ function App() {
     console.log(smth);
   }, []);
 
+  const onFilesChange = (f) => {
+    setFiles(f);
+    console.log(f[0]);
+
+    var reader = new FileReader();
+    reader.onload = (evt) => {
+      var blob = new window.Blob([new Uint8Array(evt.target.result)]);
+      wavesurferRef.current.loadBlob(blob);
+    };
+    reader.onerror = function (evt) {
+      console.error("An error ocurred reading the file: ", evt);
+    };
+
+    reader.readAsArrayBuffer(f[0]);
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <AppBar position="relative">
@@ -98,6 +117,13 @@ function App() {
       </AppBar>
       <main style={{ margin: 24 }}>
         <Stack spacing={2}>
+          <FileUpload
+            value={files}
+            onChange={onFilesChange}
+            multiple={false}
+            accept=".wav"
+          />
+
           <WaveSurfer plugins={plugins} onMount={handleWSMount}>
             <WaveForm
               id="waveform"
