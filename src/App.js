@@ -15,6 +15,8 @@ import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
+import Backdrop from "@mui/material/Backdrop";
+import CircularProgress from "@mui/material/CircularProgress";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import {
   Chart as ChartJS,
@@ -31,6 +33,8 @@ import { WaveSurfer, WaveForm, Region, Marker } from "wavesurfer-react";
 import RegionsPlugin from "wavesurfer.js/dist/plugin/wavesurfer.regions.min";
 
 import FileUpload from "react-material-file-upload";
+
+const axios = require("axios").default;
 
 const theme = createTheme();
 
@@ -66,6 +70,7 @@ function App() {
   const [regions, setRegions] = useState([]);
   const [files, setFiles] = useState([]);
   const [model, setModel] = useState("");
+  const [loading, setLoading] = useState(0);
   const [chartData, setChartData] = useState({
     labels: [],
     datasets: [],
@@ -106,7 +111,7 @@ function App() {
       wavesurferRef.current = waveSurfer;
 
       if (wavesurferRef.current) {
-        wavesurferRef.current.load(require("./test.wav"));
+        //wavesurferRef.current.load(require("./test.wav"));
 
         wavesurferRef.current.on("ready", () => {
           console.log("WaveSurfer is ready");
@@ -150,32 +155,34 @@ function App() {
   };
 
   const predict = () => {
+    if (model == "") return;
+
     // send file and model to server
     let formData = new FormData();
     formData.append("file", files[0]);
     formData.append("model", model);
     console.log("Using", model);
 
-    fetch("http://pain.informatik.uni-ulm.de:8888/predict", {
-      method: "POST",
-      body: formData,
-      mode: "cors",
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("HTTP error " + response.status);
-        }
-        return response.json();
+    axios
+      .request("http://pain.informatik.uni-ulm.de:8888/predict", {
+        method: "post",
+        data: formData,
+        onUploadProgress: (p) => {
+          console.log(p, p.loaded / p.total);
+          setLoading((p.loaded / p.total) * 100);
+        },
       })
-      .then((json) => {
-        console.log(json);
+      .then((response) => {
+        var data = response.data;
+        console.log(data);
+        setLoading(0);
 
         setChartData({
-          labels: json.classes,
+          labels: data.classes,
           datasets: [
             {
               label: model,
-              data: json.prediction,
+              data: data.prediction,
               borderColor: "rgb(53, 162, 235)",
               backgroundColor: "rgba(53, 162, 235, 0.5)",
             },
@@ -184,6 +191,7 @@ function App() {
       })
       .catch((error) => {
         console.log(error);
+        setLoading(0);
       });
   };
 
@@ -191,65 +199,103 @@ function App() {
     <ThemeProvider theme={theme}>
       <AppBar position="relative">
         <Toolbar>
+          <img
+            src={require("./logo.png")}
+            width="40"
+            height="40"
+            style={{
+              backgroundColor: "white",
+              padding: 8,
+              borderRadius: 28,
+              margin: 8,
+              marginRight: 24,
+            }}
+          />
           <Typography variant="h6" color="inherit" noWrap>
             BAT Analyzer
           </Typography>
         </Toolbar>
       </AppBar>
       <main style={{ margin: 24 }}>
-        <Stack spacing={2}>
-          <FileUpload
-            value={files}
-            onChange={onFilesChange}
-            multiple={false}
-            accept=".wav"
-          />
-
-          <WaveSurfer plugins={plugins} onMount={handleWSMount}>
-            <WaveForm
-              id="waveform"
-              hideCursor
-              cursorColor="transparent"
-              waveColor="#D9DCFF"
-              progressColor="#4353FF"
-              cursorColor="#4353FF"
-              barWidth={3}
-              barRadius={3}
-              cursorWidth={1}
-              height={200}
-              barGap={3}
-            >
-              {regions.map((regionProps) => (
-                <Region
-                  onUpdateEnd={handleRegionUpdate}
-                  key={regionProps.id}
-                  {...regionProps}
-                />
-              ))}
-            </WaveForm>
-          </WaveSurfer>
-
-          <Stack direction="row" spacing={2}>
-            <Autocomplete
-              disablePortal
-              id="combo-box-demo"
-              options={[{ label: "BAT-1: 18 european bats", id: 1 }]}
-              sx={{ width: 300 }}
-              renderInput={(params) => <TextField {...params} label="Model" />}
-              onChange={(e, v) => setModel(v.label)}
+        <Container maxWidth="md">
+          <Stack spacing={2}>
+            <FileUpload
+              value={files}
+              onChange={onFilesChange}
+              multiple={false}
+              title="Drag 'n' drop some files here, or click to select files."
+              accept=".wav"
             />
+            <Typography>
+              .WAV file has to have time expansion of 1:10 and bit depth of 24.
+            </Typography>
+            {files.length > 0 && (
+              <>
+                <WaveSurfer plugins={plugins} onMount={handleWSMount}>
+                  <WaveForm
+                    id="waveform"
+                    hideCursor
+                    cursorColor="transparent"
+                    waveColor="#D9DCFF"
+                    progressColor="#4353FF"
+                    cursorColor="#4353FF"
+                    barWidth={3}
+                    barRadius={3}
+                    cursorWidth={1}
+                    height={200}
+                    barGap={3}
+                  >
+                    {regions.map((regionProps) => (
+                      <Region
+                        onUpdateEnd={handleRegionUpdate}
+                        key={regionProps.id}
+                        {...regionProps}
+                      />
+                    ))}
+                  </WaveForm>
+                </WaveSurfer>
+                <Stack direction="row" spacing={2}>
+                  <Autocomplete
+                    disablePortal
+                    id="combo-box-demo"
+                    options={[
+                      { label: "BAT-1: 18 european bats", id: 1 },
+                      { label: "ResNet-50: 18 european bats", id: 2 },
+                    ]}
+                    sx={{ width: 300 }}
+                    renderInput={(params) => (
+                      <TextField {...params} label="Model" required />
+                    )}
+                    onChange={(e, v) => setModel(v.label)}
+                  />
 
-            <Button variant="contained" onClick={() => predict()}>
-              Predict
-            </Button>
-            <Button variant="contained" onClick={() => play()}>
-              Play / Pause
-            </Button>
+                  <Button variant="contained" onClick={() => predict()}>
+                    Predict
+                  </Button>
+                  <Button variant="contained" onClick={() => play()}>
+                    Play / Pause
+                  </Button>
+                </Stack>
+
+                <Bar options={chartOptions} data={chartData} />
+              </>
+            )}
           </Stack>
-
-          <Bar options={chartOptions} data={chartData} />
-        </Stack>
+        </Container>
       </main>
+      <Backdrop
+        sx={{
+          color: "#fff",
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
+        open={loading > 0}
+      >
+        <CircularProgress
+          variant={loading < 100 ? "determinate" : "indeterminate"}
+          value={loading}
+          color="inherit"
+        />
+      </Backdrop>
     </ThemeProvider>
   );
 }
