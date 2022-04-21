@@ -16,6 +16,8 @@ import Box from "@mui/material/Box";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import Backdrop from "@mui/material/Backdrop";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Checkbox from "@mui/material/Checkbox";
 import CircularProgress from "@mui/material/CircularProgress";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import {
@@ -66,11 +68,17 @@ const chartOptions = {
   },
 };
 
+const modelOptions = [
+  { label: "BAT-1: 18 european bats", id: 1 },
+  { label: "ResNet-50: 18 european bats", id: 2 },
+];
+
 function App() {
   const [regions, setRegions] = useState([]);
   const [files, setFiles] = useState([]);
-  const [model, setModel] = useState("");
+  const [model, setModel] = useState(modelOptions[0]);
   const [loading, setLoading] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   const [chartData, setChartData] = useState({
     labels: [],
     datasets: [],
@@ -140,6 +148,11 @@ function App() {
 
   const onFilesChange = (f) => {
     setFiles(f);
+    setChartData({
+      labels: [],
+      datasets: [],
+    });
+    setExpanded(false);
     console.log(f[0]);
 
     var reader = new FileReader();
@@ -160,8 +173,10 @@ function App() {
     // send file and model to server
     let formData = new FormData();
     formData.append("file", files[0]);
-    formData.append("model", model);
-    console.log("Using", model);
+    formData.append("model", model.label);
+    formData.append("expanded", expanded);
+
+    console.log("Using", model.label);
 
     axios
       .request("http://pain.informatik.uni-ulm.de:8888/predict", {
@@ -181,7 +196,7 @@ function App() {
           labels: data.classes,
           datasets: [
             {
-              label: model,
+              label: model.label,
               data: data.prediction,
               borderColor: "rgb(53, 162, 235)",
               backgroundColor: "rgba(53, 162, 235, 0.5)",
@@ -226,9 +241,19 @@ function App() {
               title="Drag 'n' drop some files here, or click to select files."
               accept=".wav"
             />
-            <Typography>
-              .WAV file has to have time expansion of 1:10 and bit depth of 24.
-            </Typography>
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={expanded}
+                  onChange={(event) => {
+                    setExpanded(event.target.checked);
+                  }}
+                />
+              }
+              label="File is already time expanded 1:10"
+            />
+
             {files.length > 0 && (
               <>
                 <WaveSurfer plugins={plugins} onMount={handleWSMount}>
@@ -258,15 +283,13 @@ function App() {
                   <Autocomplete
                     disablePortal
                     id="combo-box-demo"
-                    options={[
-                      { label: "BAT-1: 18 european bats", id: 1 },
-                      { label: "ResNet-50: 18 european bats", id: 2 },
-                    ]}
+                    options={modelOptions}
                     sx={{ width: 300 }}
                     renderInput={(params) => (
                       <TextField {...params} label="Model" required />
                     )}
-                    onChange={(e, v) => setModel(v.label)}
+                    onChange={(event, value) => setModel(value)}
+                    value={modelOptions[0]}
                   />
 
                   <Button variant="contained" onClick={() => predict()}>
