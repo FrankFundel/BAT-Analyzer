@@ -16,6 +16,16 @@ import Box from "@mui/material/Box";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import { Bar } from "react-chartjs-2";
 
 import { WaveSurfer, WaveForm, Region, Marker } from "wavesurfer-react";
 import RegionsPlugin from "wavesurfer.js/dist/plugin/wavesurfer.regions.min";
@@ -24,9 +34,42 @@ import FileUpload from "react-material-file-upload";
 
 const theme = createTheme();
 
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+const chartOptions = {
+  indexAxis: "y",
+  elements: {
+    bar: {
+      borderWidth: 2,
+    },
+  },
+  responsive: true,
+  plugins: {
+    legend: {
+      position: "right",
+    },
+    title: {
+      display: true,
+      text: "Predictions",
+    },
+  },
+};
+
 function App() {
   const [regions, setRegions] = useState([]);
   const [files, setFiles] = useState([]);
+  const [model, setModel] = useState("");
+  const [chartData, setChartData] = useState({
+    labels: [],
+    datasets: [],
+  });
 
   const plugins = useMemo(() => {
     return [
@@ -106,6 +149,44 @@ function App() {
     reader.readAsArrayBuffer(f[0]);
   };
 
+  const predict = () => {
+    // send file and model to server
+    let formData = new FormData();
+    formData.append("file", files[0]);
+    formData.append("model", model);
+    console.log("Using", model);
+
+    fetch("http://pain.informatik.uni-ulm.de:8888/predict", {
+      method: "POST",
+      body: formData,
+      mode: "cors",
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("HTTP error " + response.status);
+        }
+        return response.json();
+      })
+      .then((json) => {
+        console.log(json);
+
+        setChartData({
+          labels: json.classes,
+          datasets: [
+            {
+              label: model,
+              data: json.prediction,
+              borderColor: "rgb(53, 162, 235)",
+              backgroundColor: "rgba(53, 162, 235, 0.5)",
+            },
+          ],
+        });
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <AppBar position="relative">
@@ -152,21 +233,21 @@ function App() {
             <Autocomplete
               disablePortal
               id="combo-box-demo"
-              options={[
-                { label: "ResNet-50", id: 1 },
-                { label: "BAT-1", id: 2 },
-                { label: "BAT-2", id: 3 },
-                { label: "BAT-3", id: 4 },
-              ]}
+              options={[{ label: "BAT-1: 18 european bats", id: 1 }]}
               sx={{ width: 300 }}
               renderInput={(params) => <TextField {...params} label="Model" />}
+              onChange={(e, v) => setModel(v.label)}
             />
 
-            <Button variant="contained">Predict</Button>
+            <Button variant="contained" onClick={() => predict()}>
+              Predict
+            </Button>
             <Button variant="contained" onClick={() => play()}>
               Play / Pause
             </Button>
           </Stack>
+
+          <Bar options={chartOptions} data={chartData} />
         </Stack>
       </main>
     </ThemeProvider>
