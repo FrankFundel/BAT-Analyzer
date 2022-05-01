@@ -23,6 +23,9 @@ import Slider from "@mui/material/Slider";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useModel, ModelProvider } from "react-tensorflow";
 import * as tf from "@tensorflow/tfjs";
+import Plotly from "./components/PlotlyHeatMap";
+import createPlotlyComponent from "react-plotly.js/factory";
+const Plot = createPlotlyComponent(Plotly);
 
 const theme = createTheme();
 
@@ -31,12 +34,20 @@ function GAN() {
     tf.randomNormal([1, 16, 1, 1]).dataSync()
   );
   const [model, setModel] = useState(null);
-  const canvasRef = useRef(null);
+  const [imageData, setImageData] = useState(null);
 
   const generateImage = async (input) => {
     var result = await model.predict(input);
     result = result.add(tf.ones([1, 1, 64, 128])).mul(0.5);
-    await tf.browser.toPixels(tf.squeeze(result), canvasRef.current);
+    setImageData([
+      {
+        z: tf.squeeze(result).transpose().arraySync(),
+        type: "heatmap",
+        colorscale: "Viridis",
+        showscale: true,
+      },
+    ]);
+
     input.dispose();
     result.dispose();
   };
@@ -96,11 +107,12 @@ function GAN() {
               >
                 {Array.from({ length: 16 }, (item, index) => (
                   <div key={index.toString()}>
-                    <Typography color="inherit">#{index} (nan)</Typography>
+                    <Typography color="inherit">#{index} (unknown)</Typography>
                     <Slider
-                      min={-5}
-                      max={5}
+                      min={-3}
+                      max={3}
                       step={0.01}
+                      valueLabelDisplay="auto"
                       value={values[index]}
                       onChange={(e) => {
                         var v = [...values];
@@ -111,20 +123,39 @@ function GAN() {
                   </div>
                 ))}
               </Stack>
-
-              <canvas
-                ref={canvasRef}
-                width={128}
-                height={64}
+              <Plot
+                data={imageData}
+                layout={{
+                  title: "Fake bat call",
+                  xaxis: {
+                    title: {
+                      text: "Time (ms)",
+                    },
+                    tickvals: [0.0, 12.8, 25.6, 38.4, 51.2, 63.0],
+                    ticktext: [0, 5, 10, 15, 20, 25],
+                  },
+                  yaxis: {
+                    title: {
+                      text: "Frequency (kHz)",
+                    },
+                    tickvals: [
+                      0.0, 8.533333333333333, 17.066666666666666, 25.6,
+                      34.13333333333333, 42.666666666666664, 51.2,
+                      59.733333333333334, 68.26666666666667, 76.8,
+                      85.33333333333333, 93.86666666666666, 102.4,
+                      110.93333333333334, 119.46666666666667, 127.0,
+                    ],
+                    ticktext: [
+                      0.0, 9.4, 18.7, 28.1, 37.5, 46.8, 56.2, 65.6, 74.9, 84.3,
+                      93.7, 103.0, 112.4, 121.8, 131.1, 140.5,
+                    ],
+                  },
+                }}
                 style={{
-                  transform: "rotate(270deg)",
-                  width: "100%",
-                  height: "50%",
-                  maxWidth: 400,
-                  maxHeight: 200,
                   position: "sticky",
-                  right: 0,
-                  top: 200,
+                  top: 0,
+                  width: 800,
+                  height: 600,
                 }}
               />
             </Stack>
