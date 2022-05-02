@@ -29,6 +29,8 @@ const Plot = createPlotlyComponent(Plotly);
 
 const theme = createTheme();
 
+const axios = require("axios").default;
+
 function GAN() {
   const [values, setValues] = useState(
     tf.randomNormal([1, 16, 1, 1]).dataSync()
@@ -58,6 +60,32 @@ function GAN() {
       generateImage(input);
     }
   }, [model, values]);
+
+  const play = () => {
+    if (imageData.length == 0) return;
+
+    let formData = new FormData();
+    formData.append("data", JSON.stringify(imageData[0].z));
+
+    axios
+      .request("http://pain.informatik.uni-ulm.de:8888/play", {
+        method: "post",
+        data: formData,
+        headers: {
+          Accept: "audio/wav",
+        },
+        responseType: "blob",
+      })
+      .then((response) => {
+        var blob = new Blob([response.data], { type: "audio/wav" });
+        var blobUrl = URL.createObjectURL(blob);
+        var audio = new Audio(blobUrl);
+        audio.play();
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -98,11 +126,19 @@ function GAN() {
           }}
         >
           <Container maxWidth="md">
+            <Typography
+              variant="h6"
+              color="inherit"
+              noWrap
+              style={{ marginBottom: 24 }}
+            >
+              See just noise? Refresh the page to have a new call generated for
+              you 😉
+            </Typography>
             <Stack direction="row" spacing={-1}>
-              <Stack
-                spacing={0}
+              <div
                 style={{
-                  width: "100%",
+                  width: 400,
                 }}
               >
                 {Array.from({ length: 16 }, (item, index) => (
@@ -122,42 +158,72 @@ function GAN() {
                     />
                   </div>
                 ))}
-              </Stack>
-              <Plot
-                data={imageData}
-                layout={{
-                  title: "Fake bat call",
-                  xaxis: {
-                    title: {
-                      text: "Time (ms)",
-                    },
-                    tickvals: [0.0, 12.8, 25.6, 38.4, 51.2, 63.0],
-                    ticktext: [0, 5, 10, 15, 20, 25],
-                  },
-                  yaxis: {
-                    title: {
-                      text: "Frequency (kHz)",
-                    },
-                    tickvals: [
-                      0.0, 8.533333333333333, 17.066666666666666, 25.6,
-                      34.13333333333333, 42.666666666666664, 51.2,
-                      59.733333333333334, 68.26666666666667, 76.8,
-                      85.33333333333333, 93.86666666666666, 102.4,
-                      110.93333333333334, 119.46666666666667, 127.0,
-                    ],
-                    ticktext: [
-                      0.0, 9.4, 18.7, 28.1, 37.5, 46.8, 56.2, 65.6, 74.9, 84.3,
-                      93.7, 103.0, 112.4, 121.8, 131.1, 140.5,
-                    ],
-                  },
-                }}
+              </div>
+              <div
                 style={{
                   position: "sticky",
                   top: 0,
-                  width: 800,
-                  height: 600,
                 }}
-              />
+              >
+                <Plot
+                  data={imageData}
+                  layout={{
+                    title: "Fake bat call",
+                    xaxis: {
+                      title: {
+                        text: "Time (ms)",
+                      },
+                      tickvals: [0.0, 12.8, 25.6, 38.4, 51.2, 63.0],
+                      ticktext: [0, 5, 10, 15, 20, 25],
+                    },
+                    yaxis: {
+                      title: {
+                        text: "Frequency (kHz)",
+                      },
+                      tickvals: [
+                        0.0, 8.533333333333333, 17.066666666666666, 25.6,
+                        34.13333333333333, 42.666666666666664, 51.2,
+                        59.733333333333334, 68.26666666666667, 76.8,
+                        85.33333333333333, 93.86666666666666, 102.4,
+                        110.93333333333334, 119.46666666666667, 127.0,
+                      ],
+                      ticktext: [
+                        0.0, 9.4, 18.7, 28.1, 37.5, 46.8, 56.2, 65.6, 74.9,
+                        84.3, 93.7, 103.0, 112.4, 121.8, 131.1, 140.5,
+                      ],
+                    },
+                  }}
+                  style={{
+                    width: 400,
+                    height: 700,
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  color="info"
+                  style={{
+                    width: "80%",
+                    marginLeft: "10%",
+                    marginRight: "10%",
+                  }}
+                  onClick={() => play()}
+                >
+                  Play
+                </Button>
+                <Typography
+                  variant="h6"
+                  color="inherit"
+                  style={{
+                    width: "80%",
+                    marginLeft: "10%",
+                    marginRight: "10%",
+                    marginTop: 16,
+                  }}
+                >
+                  You can now even play your fake calls with 1:10 time
+                  expansion. (if server is up)
+                </Typography>
+              </div>
             </Stack>
           </Container>
         </ModelProvider>
