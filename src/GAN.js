@@ -68,7 +68,7 @@ function GAN() {
     formData.append("data", JSON.stringify(imageData[0].z));
 
     axios
-      .request("http://pain.informatik.uni-ulm.de:8888/play", {
+      .request("https://frank-bat.herokuapp.com/play", {
         method: "post",
         data: formData,
         headers: {
@@ -220,8 +220,8 @@ function GAN() {
                     marginTop: 16,
                   }}
                 >
-                  You can now even play your fake calls with 1:10 time
-                  expansion. (if server is up)
+                  You can now even play your fake calls with 1:10 time expansion
+                  (if server is up).
                 </Typography>
               </div>
             </Stack>
