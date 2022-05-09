@@ -19,6 +19,9 @@ import Backdrop from "@mui/material/Backdrop";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Checkbox from "@mui/material/Checkbox";
 import CircularProgress from "@mui/material/CircularProgress";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemText from "@mui/material/ListItemText";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import {
   Chart as ChartJS,
@@ -152,8 +155,6 @@ function BAT() {
       labels: [],
       datasets: [],
     });
-    setExpanded(false);
-    console.log(f[0]);
 
     var reader = new FileReader();
     reader.onload = (evt) => {
@@ -179,7 +180,7 @@ function BAT() {
     console.log("Using", model.label);
 
     axios
-      .request("http://pain.informatik.uni-ulm.de:8888/predict", {
+      .request("https://frank-bat.herokuapp.com/predict", {
         method: "post",
         data: formData,
         onUploadProgress: (p) => {
@@ -209,6 +210,21 @@ function BAT() {
         setLoading(0);
       });
   };
+
+  const templates = [
+    {
+      filename: "eptesicus_nilssonii.wav",
+      duration: "00:00:19",
+      size: "5.46MB",
+      expanded: true,
+    },
+    {
+      filename: "nyctalus_noctula.wav",
+      duration: "00:00:01",
+      size: "1.06MB",
+      expanded: false,
+    },
+  ];
 
   return (
     <ThemeProvider theme={theme}>
@@ -242,13 +258,41 @@ function BAT() {
       <main style={{ margin: 24 }}>
         <Container maxWidth="md">
           <Stack spacing={2}>
-            <FileUpload
-              value={files}
-              onChange={onFilesChange}
-              multiple={false}
-              title="Drag 'n' drop some files here, or click to select files."
-              accept=".wav"
-            />
+            <Stack direction="row" spacing={2}>
+              <div style={{ flex: 2 }}>
+                <FileUpload
+                  value={files}
+                  onChange={onFilesChange}
+                  multiple={false}
+                  title="Drag 'n' drop some files here, or click to select files."
+                  accept=".wav"
+                />
+              </div>
+
+              <List dense={true} style={{ width: 200 }}>
+                {templates.map((file) => (
+                  <ListItemButton
+                    key={file.filename}
+                    onClick={async () => {
+                      var path = require("./files/" + file.filename);
+                      let response = await fetch(path);
+                      let data = await response.blob();
+                      var f = new File([data], file.filename, {
+                        lastModified: new Date().getTime(),
+                        type: data.type,
+                      });
+                      onFilesChange([f]);
+                      setExpanded(file.expanded);
+                    }}
+                  >
+                    <ListItemText
+                      primary={file.filename}
+                      secondary={file.duration + " ~ " + file.size}
+                    />
+                  </ListItemButton>
+                ))}
+              </List>
+            </Stack>
 
             <FormControlLabel
               control={
