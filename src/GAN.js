@@ -37,6 +37,7 @@ function GAN() {
   );
   const [model, setModel] = useState(null);
   const [imageData, setImageData] = useState(null);
+  const [loading, setLoading] = useState(0);
 
   const generateImage = async (input) => {
     var result = await model.predict(input);
@@ -63,6 +64,7 @@ function GAN() {
 
   const play = () => {
     if (imageData.length == 0) return;
+    setLoading(100);
 
     let formData = new FormData();
     formData.append("data", JSON.stringify(imageData[0].z));
@@ -77,6 +79,8 @@ function GAN() {
         responseType: "blob",
       })
       .then((response) => {
+        setLoading(0);
+
         var blob = new Blob([response.data], { type: "audio/wav" });
         var blobUrl = URL.createObjectURL(blob);
         var audio = new Audio(blobUrl);
@@ -84,6 +88,7 @@ function GAN() {
       })
       .catch((error) => {
         console.log(error);
+        setLoading(0);
       });
   };
 
@@ -220,14 +225,27 @@ function GAN() {
                     marginTop: 16,
                   }}
                 >
-                  You can now even play your fake calls with 1:10 time expansion
-                  (if server is up).
+                  You can now even play your fake calls with 1:10 time
+                  expansion.
                 </Typography>
               </div>
             </Stack>
           </Container>
         </ModelProvider>
       </main>
+      <Backdrop
+        sx={{
+          color: "#fff",
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
+        open={loading > 0}
+      >
+        <CircularProgress
+          variant={loading < 100 ? "determinate" : "indeterminate"}
+          value={loading}
+          color="inherit"
+        />
+      </Backdrop>
     </ThemeProvider>
   );
 }

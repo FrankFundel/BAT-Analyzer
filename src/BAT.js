@@ -170,6 +170,7 @@ function BAT() {
 
   const predict = () => {
     if (model == "") return;
+    setLoading(100);
 
     // send file and model to server
     let formData = new FormData();
