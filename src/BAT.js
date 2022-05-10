@@ -38,6 +38,9 @@ import { WaveSurfer, WaveForm, Region, Marker } from "wavesurfer-react";
 import RegionsPlugin from "wavesurfer.js/dist/plugin/wavesurfer.regions.min";
 
 import FileUpload from "react-material-file-upload";
+import Plotly from "./components/CustomPlotly";
+import createPlotlyComponent from "react-plotly.js/factory";
+const Plot = createPlotlyComponent(Plotly);
 
 const axios = require("axios").default;
 
@@ -76,12 +79,38 @@ const modelOptions = [
   { label: "ResNet-50: 18 european bats", id: 2 },
 ];
 
+const patch_len = 44;
+
+const class_colors = [
+  "#FFB300", // Vivid Yellow
+  "#803E75", // Strong Purple
+  "#FF6800", // Vivid Orange
+  "#A6BDD7", // Very Light Blue
+  "#C10020", // Vivid Red
+  "#CEA262", // Grayish Yellow
+  "#817066", // Medium Gray
+  "#007D34", // Vivid Green
+  "#F6768E", // Strong Purplish Pink
+  "#00538A", // Strong Blue
+  "#FF7A5C", // Strong Yellowish Pink
+  "#53377A", // Strong Violet
+  "#FF8E00", // Vivid Orange Yellow
+  "#B32851", // Strong Purplish Red
+  "#F4C800", // Vivid Greenish Yellow
+  "#7F180D", // Strong Reddish Brown
+  "#93AA00", // Vivid Yellowish Green
+  "#593315", // Deep Yellowish Brown
+  "#F13A13", // Vivid Reddish Orange
+  "#232C16", // Dark Olive Green
+];
+
 function BAT() {
   const [regions, setRegions] = useState([]);
   const [files, setFiles] = useState([]);
   const [model, setModel] = useState(modelOptions[0]);
   const [loading, setLoading] = useState(0);
   const [expanded, setExpanded] = useState(false);
+  const [specData, setSpecData] = useState(null);
   const [chartData, setChartData] = useState({
     labels: [],
     datasets: [],
@@ -155,6 +184,7 @@ function BAT() {
       labels: [],
       datasets: [],
     });
+    setSpecData([]);
 
     var reader = new FileReader();
     reader.onload = (evt) => {
@@ -167,6 +197,12 @@ function BAT() {
 
     reader.readAsArrayBuffer(f[0]);
   };
+
+  function argMax(array) {
+    return array
+      .map((x, i) => [x, i])
+      .reduce((r, a) => (a[0] > r[0] ? a : r))[1];
+  }
 
   const predict = () => {
     if (model == "") return;
@@ -194,6 +230,47 @@ function BAT() {
         console.log(data);
         setLoading(0);
 
+        if (data.spectrogram) {
+          var bars = [];
+
+          if (data.patch_pred) {
+            let predicted_classes = {};
+            for (let i in data.patch_pred[0]) {
+              let index = data.patch_pred[0][i];
+              let patch = data.patch_pred[1][i];
+
+              let cls = argMax(patch);
+              if (!predicted_classes[cls]) {
+                predicted_classes[cls] = [];
+              }
+              predicted_classes[cls].push(index + patch_len);
+            }
+
+            for (let cls of Object.keys(predicted_classes)) {
+              var x = predicted_classes[cls];
+              bars.push({
+                type: "bar",
+                x: x,
+                y: Array(x.length).fill(15),
+                width: Array(x.length).fill(patch_len),
+                marker: { color: class_colors[cls] },
+                opacity: 1.0,
+                name: data.classes[cls],
+              });
+            }
+          }
+
+          setSpecData([
+            {
+              type: "heatmap",
+              z: data.spectrogram,
+              colorscale: "Viridis",
+              showscale: false,
+            },
+            ...bars,
+          ]);
+        }
+
         setChartData({
           labels: data.classes,
           datasets: [
@@ -218,12 +295,6 @@ function BAT() {
       duration: "00:00:19",
       size: "5.46MB",
       expanded: true,
-    },
-    {
-      filename: "nyctalus_noctula.wav",
-      duration: "00:00:01",
-      size: "1.06MB",
-      expanded: false,
     },
   ];
 
@@ -351,6 +422,34 @@ function BAT() {
                     Play / Pause
                   </Button>
                 </Stack>
+
+                <Plot
+                  data={specData}
+                  layout={{
+                    title: "Spectrogram",
+                    xaxis: {
+                      title: {
+                        text: "Time (ms)",
+                      },
+                    },
+                    yaxis: {
+                      title: {
+                        text: "Frequency (kHz)",
+                      },
+                      tickvals: [
+                        0.0, 17.133333333333333, 34.266666666666666, 51.4,
+                        68.53333333333333, 85.66666666666666, 102.8,
+                        119.93333333333334, 137.06666666666666, 154.2,
+                        171.33333333333331, 188.46666666666667, 205.6,
+                        222.73333333333332, 239.86666666666667, 256.0,
+                      ],
+                      ticktext: [
+                        0.0, 9.4, 18.7, 28.1, 37.5, 46.8, 56.2, 65.6, 74.9,
+                        84.3, 93.7, 103.0, 112.4, 121.8, 131.1, 140.5,
+                      ],
+                    },
+                  }}
+                />
 
                 <Bar options={chartOptions} data={chartData} />
               </>

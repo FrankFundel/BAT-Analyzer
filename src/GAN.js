@@ -23,7 +23,7 @@ import Slider from "@mui/material/Slider";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useModel, ModelProvider } from "react-tensorflow";
 import * as tf from "@tensorflow/tfjs";
-import Plotly from "./components/PlotlyHeatMap";
+import Plotly from "./components/CustomPlotly";
 import createPlotlyComponent from "react-plotly.js/factory";
 const Plot = createPlotlyComponent(Plotly);
 
