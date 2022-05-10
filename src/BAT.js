@@ -23,16 +23,6 @@ import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { Bar } from "react-chartjs-2";
 
 import { WaveSurfer, WaveForm, Region, Marker } from "wavesurfer-react";
 import RegionsPlugin from "wavesurfer.js/dist/plugin/wavesurfer.regions.min";
@@ -46,62 +36,45 @@ const axios = require("axios").default;
 
 const theme = createTheme();
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
-
-const chartOptions = {
-  indexAxis: "y",
-  elements: {
-    bar: {
-      borderWidth: 2,
-    },
-  },
-  responsive: true,
-  plugins: {
-    legend: {
-      position: "right",
-    },
-    title: {
-      display: true,
-      text: "Predictions",
-    },
-  },
-};
-
 const modelOptions = [
-  { label: "BAT-1: 18 european bats", id: 1 },
-  { label: "ResNet-50: 18 european bats", id: 2 },
+  { label: "ResNet-50: 18 european bats", id: 1 },
+  //{ label: "BAT-1: 18 european bats", id: 2 },
+];
+
+const templates = [
+  {
+    filename: "eptesicus_nilssonii.wav",
+    duration: "00:00:19",
+    size: "5.46MB",
+    expanded: true,
+  },
 ];
 
 const patch_len = 44;
 
 const class_colors = [
-  "#FFB300", // Vivid Yellow
-  "#803E75", // Strong Purple
-  "#FF6800", // Vivid Orange
-  "#A6BDD7", // Very Light Blue
-  "#C10020", // Vivid Red
-  "#CEA262", // Grayish Yellow
-  "#817066", // Medium Gray
-  "#007D34", // Vivid Green
-  "#F6768E", // Strong Purplish Pink
-  "#00538A", // Strong Blue
-  "#FF7A5C", // Strong Yellowish Pink
-  "#53377A", // Strong Violet
-  "#FF8E00", // Vivid Orange Yellow
-  "#B32851", // Strong Purplish Red
-  "#F4C800", // Vivid Greenish Yellow
-  "#7F180D", // Strong Reddish Brown
-  "#93AA00", // Vivid Yellowish Green
-  "#593315", // Deep Yellowish Brown
-  "#F13A13", // Vivid Reddish Orange
-  "#232C16", // Dark Olive Green
+  "#e6194b",
+  "#3cb44b",
+  "#ffe119",
+  "#4363d8",
+  "#f58231",
+  "#911eb4",
+  "#46f0f0",
+  "#f032e6",
+  "#bcf60c",
+  "#fabebe",
+  "#008080",
+  "#e6beff",
+  "#9a6324",
+  "#fffac8",
+  "#800000",
+  "#aaffc3",
+  "#808000",
+  "#ffd8b1",
+  "#000075",
+  "#808080",
+  "#ffffff",
+  "#000000",
 ];
 
 function BAT() {
@@ -109,12 +82,10 @@ function BAT() {
   const [files, setFiles] = useState([]);
   const [model, setModel] = useState(modelOptions[0]);
   const [loading, setLoading] = useState(0);
+  const [loadingText, setLoadingText] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [specData, setSpecData] = useState(null);
-  const [chartData, setChartData] = useState({
-    labels: [],
-    datasets: [],
-  });
+  const [chartData, setChartData] = useState(null);
 
   const plugins = useMemo(() => {
     return [
@@ -180,11 +151,8 @@ function BAT() {
 
   const onFilesChange = (f) => {
     setFiles(f);
-    setChartData({
-      labels: [],
-      datasets: [],
-    });
-    setSpecData([]);
+    setChartData(null);
+    setSpecData(null);
 
     var reader = new FileReader();
     reader.onload = (evt) => {
@@ -207,6 +175,7 @@ function BAT() {
   const predict = () => {
     if (model == "") return;
     setLoading(100);
+    setLoadingText("Waiting for server...");
 
     // send file and model to server
     let formData = new FormData();
@@ -221,14 +190,21 @@ function BAT() {
         method: "post",
         data: formData,
         onUploadProgress: (p) => {
-          console.log(p, p.loaded / p.total);
-          setLoading((p.loaded / p.total) * 100);
+          let percent = (p.loaded / p.total) * 100;
+          console.log(p, percent);
+          setLoading(percent);
+          if (percent == 100) {
+            setLoadingText("Processing...");
+          } else {
+            setLoadingText("Uploading " + parseInt(percent) + "%");
+          }
         },
       })
       .then((response) => {
         var data = response.data;
         console.log(data);
         setLoading(0);
+        setLoadingText("");
 
         if (data.spectrogram) {
           var bars = [];
@@ -251,7 +227,7 @@ function BAT() {
               bars.push({
                 type: "bar",
                 x: x,
-                y: Array(x.length).fill(15),
+                y: Array(x.length).fill(5),
                 width: Array(x.length).fill(patch_len),
                 marker: { color: class_colors[cls] },
                 opacity: 1.0,
@@ -271,32 +247,32 @@ function BAT() {
           ]);
         }
 
-        setChartData({
-          labels: data.classes,
-          datasets: [
-            {
-              label: model.label,
-              data: data.prediction,
-              borderColor: "rgb(53, 162, 235)",
-              backgroundColor: "rgba(53, 162, 235, 0.5)",
+        setChartData([
+          {
+            type: "bar",
+            x: data.prediction,
+            y: data.classes.map((cls) => cls + "\t"),
+            marker: {
+              color: "rgb(49,130,189)",
+              opacity: 0.7,
             },
-          ],
-        });
+            orientation: "h",
+          },
+        ]);
       })
       .catch((error) => {
         console.log(error);
         setLoading(0);
+        setLoadingText("");
       });
   };
 
-  const templates = [
-    {
-      filename: "eptesicus_nilssonii.wav",
-      duration: "00:00:19",
-      size: "5.46MB",
-      expanded: true,
-    },
-  ];
+  let x_tickvals = [];
+  let x_ticktext = [];
+  if (specData) {
+    x_tickvals = Array(10).fill().map((_, idx) => idx * (specData[0].z[0].length / 10));
+    x_ticktext = Array(10).fill().map((_, idx) => (idx * (specData[0].z[0].length / 1760)).toFixed(2));
+  }
 
   return (
     <ThemeProvider theme={theme}>
@@ -341,29 +317,56 @@ function BAT() {
                 />
               </div>
 
-              <List dense={true} style={{ width: 200 }}>
-                {templates.map((file) => (
-                  <ListItemButton
-                    key={file.filename}
-                    onClick={async () => {
-                      var path = require("./files/" + file.filename);
-                      let response = await fetch(path);
-                      let data = await response.blob();
-                      var f = new File([data], file.filename, {
-                        lastModified: new Date().getTime(),
-                        type: data.type,
-                      });
-                      onFilesChange([f]);
-                      setExpanded(file.expanded);
-                    }}
-                  >
-                    <ListItemText
-                      primary={file.filename}
-                      secondary={file.duration + " ~ " + file.size}
-                    />
-                  </ListItemButton>
-                ))}
-              </List>
+              <div
+                style={{
+                  border: "1px solid",
+                  borderRadius: 4,
+                  borderColor: "rgba(0, 0, 0, 0.23)",
+                  textAlign: "center",
+                  paddingTop: 8,
+                }}
+              >
+                <Typography
+                  variant="text"
+                  color="inherit"
+                  style={{
+                    fontWeight: "400",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  Or try some example files
+                </Typography>
+                <List
+                  dense={true}
+                  style={{
+                    width: 200,
+                    borderTop: "0.5px solid #d3d3d3",
+                    marginTop: 12,
+                  }}
+                >
+                  {templates.map((file) => (
+                    <ListItemButton
+                      key={file.filename}
+                      onClick={async () => {
+                        var path = require("./files/" + file.filename);
+                        let response = await fetch(path);
+                        let data = await response.blob();
+                        var f = new File([data], file.filename, {
+                          lastModified: new Date().getTime(),
+                          type: data.type,
+                        });
+                        onFilesChange([f]);
+                        setExpanded(file.expanded);
+                      }}
+                    >
+                      <ListItemText
+                        primary={file.filename}
+                        secondary={file.duration + " ~ " + file.size}
+                      />
+                    </ListItemButton>
+                  ))}
+                </List>
+              </div>
             </Stack>
 
             <FormControlLabel
@@ -422,36 +425,53 @@ function BAT() {
                     Play / Pause
                   </Button>
                 </Stack>
+              </>
+            )}
 
+            {specData != null && (
+              <Plot
+                data={specData}
+                layout={{
+                  title: "Spectrogram",
+                  xaxis: {
+                    title: {
+                      text: "Time (s)",
+                    },
+                    tickvals: x_tickvals,
+                    ticktext: x_ticktext,
+                  },
+                  yaxis: {
+                    title: {
+                      text: "Frequency (kHz)",
+                    },
+                    tickvals: [
+                      0.0, 17.133333333333333, 34.266666666666666, 51.4,
+                      68.53333333333333, 85.66666666666666, 102.8,
+                      119.93333333333334, 137.06666666666666, 154.2,
+                      171.33333333333331, 188.46666666666667, 205.6,
+                      222.73333333333332, 239.86666666666667, 256.0,
+                    ],
+                    ticktext: [
+                      0.0, 9.4, 18.7, 28.1, 37.5, 46.8, 56.2, 65.6, 74.9, 84.3,
+                      93.7, 103.0, 112.4, 121.8, 131.1, 140.5,
+                    ],
+                  },
+                }}
+              />
+            )}
+
+            {chartData != null && (
+              <>
                 <Plot
-                  data={specData}
+                  data={chartData}
                   layout={{
-                    title: "Spectrogram",
+                    title: "Predictions",
                     xaxis: {
-                      title: {
-                        text: "Time (ms)",
-                      },
+                      domain: [0.15, 1],
                     },
-                    yaxis: {
-                      title: {
-                        text: "Frequency (kHz)",
-                      },
-                      tickvals: [
-                        0.0, 17.133333333333333, 34.266666666666666, 51.4,
-                        68.53333333333333, 85.66666666666666, 102.8,
-                        119.93333333333334, 137.06666666666666, 154.2,
-                        171.33333333333331, 188.46666666666667, 205.6,
-                        222.73333333333332, 239.86666666666667, 256.0,
-                      ],
-                      ticktext: [
-                        0.0, 9.4, 18.7, 28.1, 37.5, 46.8, 56.2, 65.6, 74.9,
-                        84.3, 93.7, 103.0, 112.4, 121.8, 131.1, 140.5,
-                      ],
-                    },
+                    height: 600,
                   }}
                 />
-
-                <Bar options={chartOptions} data={chartData} />
               </>
             )}
           </Stack>
@@ -464,11 +484,16 @@ function BAT() {
         }}
         open={loading > 0}
       >
-        <CircularProgress
-          variant={loading < 100 ? "determinate" : "indeterminate"}
-          value={loading}
-          color="inherit"
-        />
+        <Stack spacing={2} alignItems="center">
+          <CircularProgress
+            variant={loading < 100 ? "determinate" : "indeterminate"}
+            value={loading}
+            color="inherit"
+          />
+          <Typography variant="text" color="inherit">
+            {loadingText}
+          </Typography>
+        </Stack>
       </Backdrop>
     </ThemeProvider>
   );

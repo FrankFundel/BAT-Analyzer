@@ -38,6 +38,7 @@ function GAN() {
   const [model, setModel] = useState(null);
   const [imageData, setImageData] = useState(null);
   const [loading, setLoading] = useState(0);
+  const [loadingText, setLoadingText] = useState("");
 
   const generateImage = async (input) => {
     var result = await model.predict(input);
@@ -65,6 +66,7 @@ function GAN() {
   const play = () => {
     if (imageData.length == 0) return;
     setLoading(100);
+    setLoadingText("Waiting for server...");
 
     let formData = new FormData();
     formData.append("data", JSON.stringify(imageData[0].z));
@@ -80,6 +82,7 @@ function GAN() {
       })
       .then((response) => {
         setLoading(0);
+        setLoadingText("");
 
         var blob = new Blob([response.data], { type: "audio/wav" });
         var blobUrl = URL.createObjectURL(blob);
@@ -89,6 +92,7 @@ function GAN() {
       .catch((error) => {
         console.log(error);
         setLoading(0);
+        setLoadingText("");
       });
   };
 
@@ -240,11 +244,16 @@ function GAN() {
         }}
         open={loading > 0}
       >
-        <CircularProgress
-          variant={loading < 100 ? "determinate" : "indeterminate"}
-          value={loading}
-          color="inherit"
-        />
+        <Stack spacing={2} alignItems="center">
+          <CircularProgress
+            variant={loading < 100 ? "determinate" : "indeterminate"}
+            value={loading}
+            color="inherit"
+          />
+          <Typography variant="text" color="inherit">
+            {loadingText}
+          </Typography>
+        </Stack>
       </Backdrop>
     </ThemeProvider>
   );
