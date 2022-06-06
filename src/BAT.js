@@ -22,6 +22,8 @@ import CircularProgress from "@mui/material/CircularProgress";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 
 import { WaveSurfer, WaveForm, Region, Marker } from "wavesurfer-react";
@@ -36,10 +38,7 @@ const axios = require("axios").default;
 
 const theme = createTheme();
 
-const modelOptions = [
-  { label: "ResNet-50: 18 european bats", id: 1 },
-  //{ label: "BAT-1: 18 european bats", id: 2 },
-];
+const modelOptions = [{ label: "BAT: 18 european bats", id: 1 }];
 
 const templates = [
   {
@@ -52,31 +51,6 @@ const templates = [
 
 const patch_len = 44;
 
-const class_colors = [
-  "#e6194b",
-  "#3cb44b",
-  "#ffe119",
-  "#4363d8",
-  "#f58231",
-  "#911eb4",
-  "#46f0f0",
-  "#f032e6",
-  "#bcf60c",
-  "#fabebe",
-  "#008080",
-  "#e6beff",
-  "#9a6324",
-  "#fffac8",
-  "#800000",
-  "#aaffc3",
-  "#808000",
-  "#ffd8b1",
-  "#000075",
-  "#808080",
-  "#ffffff",
-  "#000000",
-];
-
 function BAT() {
   const [regions, setRegions] = useState([]);
   const [files, setFiles] = useState([]);
@@ -86,6 +60,7 @@ function BAT() {
   const [expanded, setExpanded] = useState(false);
   const [specData, setSpecData] = useState(null);
   const [chartData, setChartData] = useState(null);
+  const [tabValue, setTabValue] = React.useState(0);
 
   const plugins = useMemo(() => {
     return [
@@ -166,12 +141,6 @@ function BAT() {
     reader.readAsArrayBuffer(f[0]);
   };
 
-  function argMax(array) {
-    return array
-      .map((x, i) => [x, i])
-      .reduce((r, a) => (a[0] > r[0] ? a : r))[1];
-  }
-
   const predict = () => {
     if (model == "") return;
     setLoading(100);
@@ -206,45 +175,18 @@ function BAT() {
         setLoading(0);
         setLoadingText("");
 
-        if (data.spectrogram) {
-          var bars = [];
-
-          if (data.patch_pred) {
-            let predicted_classes = {};
-            for (let i in data.patch_pred[0]) {
-              let index = data.patch_pred[0][i];
-              let patch = data.patch_pred[1][i];
-
-              let cls = argMax(patch);
-              if (!predicted_classes[cls]) {
-                predicted_classes[cls] = [];
-              }
-              predicted_classes[cls].push(index + patch_len);
-            }
-
-            for (let cls of Object.keys(predicted_classes)) {
-              var x = predicted_classes[cls];
-              bars.push({
-                type: "bar",
-                x: x,
-                y: Array(x.length).fill(5),
-                width: Array(x.length).fill(patch_len),
-                marker: { color: class_colors[cls] },
-                opacity: 1.0,
-                name: data.classes[cls],
-              });
-            }
-          }
-
-          setSpecData([
-            {
+        if (data.visualization) {
+          var specData = [];
+          for (let i in data.visualization) {
+            specData.push({
               type: "heatmap",
-              z: data.spectrogram,
+              z: data.visualization[i][0],
               colorscale: "Viridis",
               showscale: false,
-            },
-            ...bars,
-          ]);
+              label: i == 0 ? "Input" : data.classes[data.visualization[i][1]],
+            });
+          }
+          setSpecData(specData);
         }
 
         setChartData([
@@ -270,8 +212,16 @@ function BAT() {
   let x_tickvals = [];
   let x_ticktext = [];
   if (specData) {
-    x_tickvals = Array(10).fill().map((_, idx) => idx * (specData[0].z[0].length / 10));
-    x_ticktext = Array(10).fill().map((_, idx) => (idx * (specData[0].z[0].length / 1760)).toFixed(2));
+    x_tickvals = Array(10)
+      .fill()
+      .map((_, idx) => idx * (specData[0].z[0].length / 10));
+    x_ticktext = Array(10)
+      .fill()
+      .map((_, idx) => (idx * (specData[0].z[0].length / 1760)).toFixed(2));
+  }
+
+  function handleChange(event, newValue) {
+    setTabValue(newValue);
   }
 
   return (
@@ -429,35 +379,48 @@ function BAT() {
             )}
 
             {specData != null && (
-              <Plot
-                data={specData}
-                layout={{
-                  title: "Spectrogram",
-                  xaxis: {
-                    title: {
-                      text: "Time (s)",
+              <>
+                <Tabs value={tabValue} onChange={handleChange}>
+                  {specData.map((item) => (
+                    <Tab label={item.label} />
+                  ))}
+                </Tabs>
+
+                <Plot
+                  data={[specData[tabValue]]}
+                  layout={{
+                    margin: {
+                      l: 50,
+                      r: 0,
+                      b: 50,
+                      t: 0,
                     },
-                    tickvals: x_tickvals,
-                    ticktext: x_ticktext,
-                  },
-                  yaxis: {
-                    title: {
-                      text: "Frequency (kHz)",
+                    xaxis: {
+                      title: {
+                        text: "Time (s)",
+                      },
+                      tickvals: x_tickvals,
+                      ticktext: x_ticktext,
                     },
-                    tickvals: [
-                      0.0, 17.133333333333333, 34.266666666666666, 51.4,
-                      68.53333333333333, 85.66666666666666, 102.8,
-                      119.93333333333334, 137.06666666666666, 154.2,
-                      171.33333333333331, 188.46666666666667, 205.6,
-                      222.73333333333332, 239.86666666666667, 256.0,
-                    ],
-                    ticktext: [
-                      0.0, 9.4, 18.7, 28.1, 37.5, 46.8, 56.2, 65.6, 74.9, 84.3,
-                      93.7, 103.0, 112.4, 121.8, 131.1, 140.5,
-                    ],
-                  },
-                }}
-              />
+                    yaxis: {
+                      title: {
+                        text: "Frequency (kHz)",
+                      },
+                      tickvals: [
+                        0.0, 17.133333333333333, 34.266666666666666, 51.4,
+                        68.53333333333333, 85.66666666666666, 102.8,
+                        119.93333333333334, 137.06666666666666, 154.2,
+                        171.33333333333331, 188.46666666666667, 205.6,
+                        222.73333333333332, 239.86666666666667, 256.0,
+                      ],
+                      ticktext: [
+                        0.0, 9.4, 18.7, 28.1, 37.5, 46.8, 56.2, 65.6, 74.9,
+                        84.3, 93.7, 103.0, 112.4, 121.8, 131.1, 140.5,
+                      ],
+                    },
+                  }}
+                />
+              </>
             )}
 
             {chartData != null && (
