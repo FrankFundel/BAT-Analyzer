@@ -135,16 +135,11 @@ function GAN() {
           }}
         >
           <Container maxWidth="md">
-            <Typography
-              variant="h6"
-              color="inherit"
-              noWrap
-              style={{ marginBottom: 24 }}
-            >
+            <Typography variant="h6" color="inherit">
               See just noise? Refresh the page to have a new call generated for
               you 😉
             </Typography>
-            <Stack direction="row" spacing={-1}>
+            <Stack direction="row" spacing={-1} style={{ marginTop: 24 }}>
               <div
                 style={{
                   width: 400,

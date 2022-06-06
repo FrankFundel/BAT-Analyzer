@@ -174,6 +174,7 @@ function BAT() {
         console.log(data);
         setLoading(0);
         setLoadingText("");
+        setTabValue(0);
 
         if (data.visualization) {
           var specData = [];
@@ -255,7 +256,14 @@ function BAT() {
       </AppBar>
       <main style={{ margin: 24 }}>
         <Container maxWidth="md">
-          <Stack spacing={2}>
+          <Typography variant="h8" color="inherit">
+            Can classify all german bat species except: Barbastella
+            barbastellus, Hypsugo savii, Myotis alcathoe, Myotis bechsteinii,
+            Plecotus auritus, Plecotus austriacus and Pipistrellus pygmaeus
+            because of lack of data.
+          </Typography>
+
+          <Stack spacing={2} style={{ marginTop: 24 }}>
             <Stack direction="row" spacing={2}>
               <div style={{ flex: 2 }}>
                 <FileUpload
