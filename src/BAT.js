@@ -47,6 +47,12 @@ const templates = [
     size: "5.46MB",
     expanded: true,
   },
+  {
+    filename: "mdaub_pkuhl.wav",
+    duration: "00:00:03",
+    size: "2.69MB",
+    expanded: false,
+  },
 ];
 
 const patch_len = 44;
@@ -218,7 +224,7 @@ function BAT() {
       .map((_, idx) => idx * (specData[0].z[0].length / 10));
     x_ticktext = Array(10)
       .fill()
-      .map((_, idx) => (idx * (specData[0].z[0].length / 1760)).toFixed(2));
+      .map((_, idx) => (idx * (specData[0].z[0].length / 15600)).toFixed(2)); // 780 * 2 * 10 = 15600, 13ms * 60 = 780
   }
 
   function handleChange(event, newValue) {
@@ -260,7 +266,8 @@ function BAT() {
             Can classify all german bat species except: Barbastella
             barbastellus, Hypsugo savii, Myotis alcathoe, Myotis bechsteinii,
             Plecotus auritus, Plecotus austriacus and Pipistrellus pygmaeus
-            because of lack of data.
+            because of lack of data. In this demo, because of memory
+            restrictions, only the first 780 ms are used.
           </Typography>
 
           <Stack spacing={2} style={{ marginTop: 24 }}>
