@@ -188,7 +188,7 @@ function BAT() {
             specData.push({
               type: "heatmap",
               z: data.visualization[i][0],
-              colorscale: "Viridis",
+              colorscale: "Electric",
               showscale: false,
               label: i == 0 ? "Input" : data.classes[data.visualization[i][1]],
             });
@@ -340,6 +340,11 @@ function BAT() {
                   checked={expanded}
                   onChange={(event) => {
                     setExpanded(event.target.checked);
+                    if (event.target.checked) {
+                      wavesurferRef.current.setPlaybackRate(1.0);
+                    } else {
+                      wavesurferRef.current.setPlaybackRate(0.1);
+                    }
                   }}
                 />
               }
